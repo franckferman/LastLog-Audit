@@ -9,7 +9,7 @@
 
 <!-- Logo -->
 <a href="https://github.com/franckferman/LastLog-Audit">
-  <img src="https://raw.githubusercontent.com/franckferman/LastLog-Audit/stable/docs/github/graphical_resources/Logo-Without_background-LastLog-Audit.png" alt="LastLog-Audit Logo" width="auto" height="auto">
+  <img src="https://raw.githubusercontent.com/franckferman/LastLog-Audit/stable/docs/github/graphical_resources/Logo-Without_background-lastlog-audit.png" alt="LastLog-Audit Logo" width="auto" height="auto">
 </a>
 
 <!-- Title & Tagline -->
