@@ -55,7 +55,7 @@ Originally built for personal use and professional system audits, this tool offe
 
 Before getting started, make sure you meet the following prerequisites.
 
-### Prérequis
+### Prerequisites
 
 1. **Python 3**: Ensure Python 3 is installed on your system.
 
