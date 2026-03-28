@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [stable, dev]
+    paths:
+      - 'LastLogAudit.py'
+      - 'scripts/**'
+  pull_request:
+    branches: [stable]
+
+jobs:
+  lint:
+    name: Syntax check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify Python syntax
+        run: |
+          python3 -m py_compile LastLogAudit.py
+          python3 -m py_compile scripts/generate_samples.py
+          echo "[+] All scripts compile OK."
+
+  generate-samples:
+    name: Regenerate samples
+    runs-on: ubuntu-latest
+    needs: lint
+    if: contains(github.event.head_commit.modified, 'scripts/generate_samples.py')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate sample files
+        run: python3 scripts/generate_samples.py
+
+      - name: Verify samples parse correctly
+        run: |
+          for f in samples/*.lastlog; do
+            echo "--- $f ---"
+            python3 LastLogAudit.py --file "$f" --display line
+            echo ""
+          done
+
+      - name: Commit updated samples
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "franckferman"
+          git config user.email "franckferman@users.noreply.github.com"
+          git add samples/*.lastlog
+          if git diff --cached --quiet; then
+            echo "[*] No changes to samples."
+          else
+            git commit -m "Regenerate sample lastlog files"
+            git push
+          fi

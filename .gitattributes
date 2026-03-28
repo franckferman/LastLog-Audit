@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------
+# Git attributes - language statistics and diff behaviour
+# ---------------------------------------------------------------------------
+
+# Mark documentation assets as non-code so they do not skew language stats
+docs/**                      linguist-documentation=true
+samples/**                   linguist-documentation=true
+samples/*.lastlog            binary
+
+# Force LF line endings for source files committed cross-platform
+*.py                         text eol=lf
+*.md                         text eol=lf
+*.txt                        text eol=lf
+*.csv                        text eol=lf
+*.html                       text eol=lf
+*.css                        text eol=lf
+*.js                         text eol=lf
+*.sh                         text eol=lf
+.gitignore                   text eol=lf
+.gitattributes               text eol=lf
+
+# Binary assets - no diff, no merging
+*.png                        binary
+*.jpg                        binary
+*.jpeg                       binary
+*.gif                        binary
+*.ico                        binary
+*.pdf                        binary

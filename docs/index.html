@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LastLog-Audit</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Mono:wght@400;500;700&display=swap');
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #060606;
+      --accent: #c0392b;
+      --text: #cccccc;
+      --text-dim: #666666;
+      --terminal-bg: #0a0a0a;
+      --terminal-border: #1a1a1a;
+      --green: #27ae60;
+      --white: #e0e0e0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Fira Mono', 'Courier New', monospace;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* Scan lines overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.08) 2px,
+        rgba(0, 0, 0, 0.08) 4px
+      );
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: #e74c3c;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 6rem;
+    }
+
+    /* Glitch title */
+    .title-block {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem 0;
+    }
+
+    .glitch {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--white);
+      position: relative;
+      display: inline-block;
+      user-select: none;
+    }
+
+    .glitch::before,
+    .glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .glitch::before {
+      color: var(--accent);
+      clip-path: inset(100% 0 0 0);
+      animation: gb 5s infinite;
+    }
+
+    .glitch::after {
+      color: rgba(195,195,195,.85);
+      clip-path: inset(100% 0 0 0);
+      animation: ga 5s infinite;
+    }
+
+    @keyframes gb {
+      0%,81%,87%,93%,100% { clip-path:inset(100% 0 0 0); transform:translate(0); opacity:1; }
+      82%   { clip-path:polygon(0 11%,100% 11%,100% 20%,0 20%); transform:translate(-11px,0); }
+      83%   { clip-path:polygon(0 44%,100% 44%,100% 53%,0 53%,0 7%,100% 7%,100% 15%,0 15%); transform:translate(7px,0); }
+      84%   { clip-path:polygon(0 67%,100% 67%,100% 75%,0 75%); transform:translate(-5px,0); }
+      85%   { clip-path:polygon(0 29%,100% 29%,100% 37%,0 37%); transform:translate(9px,0); }
+      86%   { clip-path:inset(100% 0 0 0); transform:translate(0); }
+      91%   { clip-path:polygon(0 19%,100% 19%,100% 27%,0 27%); transform:translate(-6px,0); opacity:.4; }
+      92%   { clip-path:inset(100% 0 0 0); opacity:0; }
+    }
+
+    @keyframes ga {
+      0%,81%,87%,93%,100% { clip-path:inset(100% 0 0 0); transform:translate(0); opacity:1; }
+      82.4% { clip-path:polygon(0 57%,100% 57%,100% 66%,0 66%); transform:translate(10px,0); }
+      83.4% { clip-path:polygon(0 24%,100% 24%,100% 32%,0 32%,0 71%,100% 71%,100% 79%,0 79%); transform:translate(-7px,0); }
+      84.4% { clip-path:polygon(0 49%,100% 49%,100% 58%,0 58%); transform:translate(5px,0); }
+      85.4% { clip-path:polygon(0 14%,100% 14%,100% 21%,0 21%); transform:translate(-8px,0); }
+      86.4% { clip-path:inset(100% 0 0 0); transform:translate(0); }
+      91.5% { clip-path:polygon(0 59%,100% 59%,100% 67%,0 67%); transform:translate(5px,0); opacity:.3; }
+      92.5% { clip-path:inset(100% 0 0 0); opacity:0; }
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 0.95rem;
+      margin-top: 0.75rem;
+    }
+
+    .badge-row {
+      margin-top: 1.25rem;
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .badge-row img {
+      height: 22px;
+    }
+
+    /* Section headings */
+    h2 {
+      color: var(--accent);
+      font-size: 1.15rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin: 3rem 0 1rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--terminal-border);
+    }
+
+    /* Terminal block */
+    .terminal {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+      position: relative;
+    }
+
+    .terminal::before {
+      content: '';
+      display: block;
+      margin-bottom: 0.75rem;
+      height: 12px;
+      background:
+        radial-gradient(circle at 8px 6px, #ff5f56 5px, transparent 5px),
+        radial-gradient(circle at 28px 6px, #ffbd2e 5px, transparent 5px),
+        radial-gradient(circle at 48px 6px, #27c93f 5px, transparent 5px);
+      background-repeat: no-repeat;
+    }
+
+    .terminal code {
+      font-family: 'Fira Mono', monospace;
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    .terminal .prompt {
+      color: var(--green);
+      user-select: none;
+    }
+
+    .terminal .flag {
+      color: var(--accent);
+    }
+
+    .terminal .comment {
+      color: var(--text-dim);
+    }
+
+    /* Paragraphs */
+    p {
+      margin: 0.6rem 0;
+      font-size: 0.92rem;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.85rem;
+    }
+
+    th {
+      text-align: left;
+      color: var(--accent);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--terminal-border);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid #111;
+      vertical-align: top;
+    }
+
+    td code {
+      color: var(--white);
+      font-size: 0.84rem;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--terminal-border);
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 0.8rem;
+    }
+
+    .footer a {
+      color: var(--text-dim);
+    }
+
+    .footer a:hover {
+      color: var(--accent);
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .glitch { font-size: 1.6rem; }
+      .container { padding: 2rem 1rem 4rem; }
+      table { font-size: 0.72rem; }
+      td, th { padding: 0.35rem 0.5rem; }
+      .terminal code { font-size: 0.75rem; }
+      .subtitle { font-size: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="title-block">
+      <div class="glitch" data-text="LastLog-Audit">LastLog-Audit</div>
+      <div class="subtitle">Linux authentication log forensics: lastlog, wtmp, auth.log parsing and cross-source correlation.</div>
+      <div class="badge-row">
+        <a href="https://github.com/franckferman/LastLog-Audit"><img src="https://img.shields.io/github/stars/franckferman/LastLog-Audit?style=flat-square&color=c0392b" alt="Stars"></a>
+        <a href="https://github.com/franckferman/LastLog-Audit/blob/stable/LICENSE"><img src="https://img.shields.io/github/license/franckferman/LastLog-Audit?style=flat-square&color=c0392b" alt="License"></a>
+        <a href="https://github.com/franckferman/LastLog-Audit"><img src="https://img.shields.io/badge/python-3.7+-c0392b?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
+      </div>
+    </div>
+
+    <h2>Overview</h2>
+    <p>
+      <strong>LastLog-Audit</strong> is a zero-dependency Python parser for the binary
+      <code>/var/log/lastlog</code> database on Linux systems. It extracts the most recent
+      login timestamp, terminal, and originating host for every UID, enabling security
+      teams to identify stale accounts, detect credential abuse, and support forensic
+      triage during incident response.
+    </p>
+    <p>
+      Stale and dormant accounts are a persistent blind spot in enterprise environments.
+      Adversaries routinely leverage forgotten local accounts for initial access
+      (<a href="https://attack.mitre.org/techniques/T1078/">T1078</a>) and persistence,
+      knowing these credentials often escape rotation policies and active monitoring.
+      LastLog-Audit makes this exposure immediately visible.
+    </p>
+
+    <h2>Quick Start</h2>
+    <div class="terminal">
+      <code>
+        <span class="comment"># Parse lastlog with usernames</span><br>
+        <span class="prompt">$</span> sudo python3 LastLogAudit.py <span class="flag">-u</span><br>
+        <br>
+        <span class="comment"># Parse wtmp (full login/logout history)</span><br>
+        <span class="prompt">$</span> python3 LastLogAudit.py <span class="flag">--wtmp</span> /var/log/wtmp<br>
+        <br>
+        <span class="comment"># Parse auth.log (SSH successes/failures + sudo)</span><br>
+        <span class="prompt">$</span> python3 LastLogAudit.py <span class="flag">--auth-log</span> /var/log/auth.log<br>
+        <br>
+        <span class="comment"># Cross-reference all 3 sources</span><br>
+        <span class="prompt">$</span> python3 LastLogAudit.py <span class="flag">-f</span> /var/log/lastlog <span class="flag">--wtmp</span> /var/log/wtmp <span class="flag">--auth-log</span> /var/log/auth.log <span class="flag">--correlate</span>
+      </code>
+    </div>
+
+    <h2>Parameters</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><code>-f / --file</code></td><td>Path to lastlog binary (default: /var/log/lastlog)</td></tr>
+        <tr><td><code>--wtmp</code></td><td>Parse wtmp binary for full login/logout history</td></tr>
+        <tr><td><code>--auth-log</code></td><td>Parse auth.log for SSH events and sudo commands</td></tr>
+        <tr><td><code>--correlate</code></td><td>Cross-reference lastlog + wtmp + auth.log (requires all three)</td></tr>
+        <tr><td><code>-u / --include-username</code></td><td>Resolve UIDs to usernames (lastlog mode only)</td></tr>
+        <tr><td><code>-d / --display</code></td><td>Output format: <code>table</code> or <code>line</code></td></tr>
+        <tr><td><code>-e / --export</code></td><td>Export to file</td></tr>
+        <tr><td><code>-F / --export-format</code></td><td><code>csv</code> or <code>txt</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>MITRE ATT&amp;CK Mapping</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Technique</th>
+          <th>Relevance</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>T1078</code></td>
+          <td>Valid Accounts</td>
+          <td>Surfaces accounts with recent login activity indicating potential credential abuse.</td>
+        </tr>
+        <tr>
+          <td><code>T1078.003</code></td>
+          <td>Local Accounts</td>
+          <td>Dormant local accounts with unexpected recent logins are high-fidelity indicators.</td>
+        </tr>
+        <tr>
+          <td><code>T1136</code></td>
+          <td>Create Account</td>
+          <td>New UIDs with no lastlog record may indicate adversary-created accounts.</td>
+        </tr>
+        <tr>
+          <td><code>T1070.006</code></td>
+          <td>Timestomp</td>
+          <td>Active accounts with zeroed lastlog records suggest evidence destruction.</td>
+        </tr>
+        <tr>
+          <td><code>T1021</code></td>
+          <td>Remote Services</td>
+          <td>Hostname/IP fields reveal the origin of SSH and remote authentications.</td>
+        </tr>
+        <tr>
+          <td><code>T1531</code></td>
+          <td>Account Access Removal</td>
+          <td>Missing records relative to a baseline may indicate passwd or lastlog tampering.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Training Lab</h2>
+    <p>
+      9 pre-built lastlog scenarios in <code>samples/</code> for hands-on forensic training.
+      Analyze offline without root access. Use as SOC analyst exercises, DFIR training, or CTF challenges.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Scenario</th><th>Key Indicators</th><th>MITRE</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>clean_server</code></td><td>Baseline: internal IPs, business hours</td><td>-</td></tr>
+        <tr><td><code>compromised</code></td><td>Root from Tor exit, dormant account reactivated</td><td>T1078, T1021</td></tr>
+        <tr><td><code>timestomped</code></td><td>Root record zeroed, future timestamp</td><td>T1070.006</td></tr>
+        <tr><td><code>apt_cozy_bear</code></td><td>9-month dwell, rotating C2, business hours</td><td>APT29</td></tr>
+        <tr><td><code>apt_lazarus</code></td><td>Rapid multi-account, single C2, NK hours</td><td>APT38</td></tr>
+        <tr><td><code>insider_threat</code></td><td>2-3 AM access from home IP</td><td>Insider</td></tr>
+        <tr><td><code>brute_force</code></td><td>5 accounts + root, same IP, 13 minutes</td><td>T1110</td></tr>
+        <tr><td><code>supply_chain</code></td><td>CI/CD service accounts from GCP IPs</td><td>T1195</td></tr>
+        <tr><td><code>pentest_engagement</code></td><td>10.10.14.x, methodical privesc chain</td><td>Red team</td></tr>
+      </tbody>
+    </table>
+
+    <div class="terminal">
+      <code>
+        <span class="comment"># Analyze an APT29 scenario</span><br>
+        <span class="prompt">$</span> python3 LastLogAudit.py <span class="flag">--file</span> samples/apt_cozy_bear.lastlog<br>
+        <br>
+        <span class="prompt">[+]</span> 7 login record(s) parsed<br>
+        <br>
+        Terminal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; From &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Last Login<br>
+        ----------------------------------------------------------------<br>
+        pts/0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 10.0.1.50 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2026-03-25 10:15:00<br>
+        pts/3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 193.29.56.122 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2025-06-14 09:32:00<br>
+        pts/3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 91.219.236.18 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2025-09-03 10:47:00<br>
+        pts/3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 5.45.65.52 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2025-12-11 11:05:00<br>
+        pts/3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 45.133.1.71 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 2026-03-22 09:58:00<br>
+      </code>
+    </div>
+
+    <h2 style="border-bottom-color:var(--green)">Forensic Learning Lab</h2>
+    <p>
+      Interactive training module: explore the binary structure of lastlog records at the byte level,
+      compare the same compromise across all 3 log sources, and test your IOC detection skills.
+    </p>
+    <p style="margin-top:.8rem"><a href="learn.html" style="color:var(--green);border:1px solid rgba(39,174,96,.3);padding:.4rem 1rem;border-radius:3px;font-size:.8rem;text-decoration:none">Open Learning Lab</a></p>
+
+    <h2>Requirements</h2>
+    <p>Python 3.7 or later. Standard library only, no external dependencies.</p>
+    <p>Read access to <code>/var/log/lastlog</code> (requires <code>root</code> or <code>adm</code> group membership).</p>
+
+    <h2>License</h2>
+    <p>
+      Released under the
+      <a href="https://github.com/franckferman/LastLog-Audit/blob/stable/LICENSE">GNU Affero General Public License v3.0</a>.
+    </p>
+
+    <div class="footer">
+      <a href="https://github.com/franckferman/LastLog-Audit">GitHub</a>
+      &nbsp;&middot;&nbsp;
+      <a href="https://github.com/franckferman">franckferman</a>
+    </div>
+
+  </div>
+</body>
+</html>
