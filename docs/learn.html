@@ -243,12 +243,12 @@ pts/3      10.0.1.50           2026-01-05 11:00:00   <span class="warn">&lt;-- s
   <h2>Test your analysis skills</h2>
 
   <div class="challenge" id="q1">
-    <div class="challenge-q">A lastlog record for root shows timestamp=0 on an active production server. What does this indicate?</div>
+    <div class="challenge-q">A lastlog record for root shows timestamp=0 on an active production server. What is the FIRST thing you should do?</div>
     <div class="challenge-opts">
-      <button class="challenge-btn" onclick="answer(this,'q1',false)">Root has never logged in</button>
-      <button class="challenge-btn" onclick="answer(this,'q1',true)">The record was zeroed - possible evidence destruction (T1070.006)</button>
-      <button class="challenge-btn" onclick="answer(this,'q1',false)">The lastlog file is corrupted</button>
-      <button class="challenge-btn" onclick="answer(this,'q1',false)">Normal behavior on systems using SSH keys only</button>
+      <button class="challenge-btn" onclick="answer(this,'q1',false)">Ignore it - root probably never logged in directly</button>
+      <button class="challenge-btn" onclick="answer(this,'q1',true)">Cross-reference with wtmp and auth.log to determine if root has logged in before</button>
+      <button class="challenge-btn" onclick="answer(this,'q1',false)">Immediately escalate as a confirmed compromise</button>
+      <button class="challenge-btn" onclick="answer(this,'q1',false)">Check if the lastlog file is corrupted</button>
     </div>
     <div class="challenge-result" id="q1-result"></div>
   </div>
@@ -510,7 +510,7 @@ function showTab(n) {
 
 // CHALLENGE
 const explanations = {
-  q1: 'On an active server, root always has a lastlog record from system maintenance, cron jobs, or direct admin logins. A zeroed record (timestamp=0) is a strong indicator that an attacker with root access wiped the evidence using a tool like hidemylogs. This is MITRE ATT&CK T1070.006 (Indicator Removal: Timestomp).',
+  q1: 'A root timestamp=0 has multiple legitimate explanations: PermitRootLogin no in sshd_config, sudo-only administration, or a fresh install. But it can also indicate evidence destruction (T1070.006) using tools like hidemylogs. The correct approach is to cross-reference: check wtmp for past root sessions and auth.log for root authentication events. If those sources show root logins but lastlog does not, someone tampered with lastlog. Context determines the answer, not the value alone.',
   q2: 'One IP, 6 accounts, sequential terminals, 13-minute window. This is textbook credential stuffing / brute force with successful authentications. A legitimate admin would use one account. NAT users would have different timing patterns. CI/CD uses service accounts, not interactive pts sessions.',
   q3: 'A login without a corresponding logout in wtmp means the session is still active OR the attacker cleaned the logout record. With an external IP and PID 31337 (a classic "leet" PID choice), this is almost certainly an active attacker session. Immediate containment required.',
   q4: 'AIDE detects modifications but only after the fact. chattr +i can be removed by root (cap_linux_immutable). Running LastLog-Audit more often does not help if the data is already wiped. Only remote log forwarding creates a copy the attacker cannot reach from the compromised host.',
