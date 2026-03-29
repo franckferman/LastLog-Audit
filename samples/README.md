@@ -1,11 +1,21 @@
 # Training Lab - Scenario Solutions
 
-This directory contains 9 pre-built lastlog binary files simulating real-world attack scenarios. Each file can be analyzed with LastLog-Audit without root access or a live system.
+This directory contains 9 lastlog scenarios, plus companion wtmp and auth.log files for the compromised scenario. All can be analyzed offline without root access.
 
 Use these as SOC analyst exercises, DFIR training modules, or CTF challenges.
 
 ```bash
-python3 LastLogAudit.py -f samples/<scenario>.lastlog
+# Lastlog analysis
+python3 LastLogAudit.py -f samples/compromised.lastlog
+
+# Wtmp (full session history)
+python3 LastLogAudit.py --wtmp samples/compromised.wtmp
+
+# Auth.log (SSH failures + sudo)
+python3 LastLogAudit.py --auth-log samples/compromised.auth.log
+
+# Cross-reference all 3 sources
+python3 LastLogAudit.py -f samples/compromised.lastlog --wtmp samples/compromised.wtmp --auth-log samples/compromised.auth.log
 ```
 
 ---
