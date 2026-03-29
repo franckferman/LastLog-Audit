@@ -27,6 +27,7 @@
     <li><a href="#parameters">Parameters</a></li>
     <li><a href="#examples">Examples</a></li>
     <li><a href="#training-lab">Training Lab</a></li>
+    <li><a href="#opsec-awareness">OPSEC Awareness</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
   </ol>
@@ -336,6 +337,36 @@ def generate_my_scenario():
     }
     write_lastlog("samples/my_scenario.lastlog", records)
 ```
+
+<p align="right">(<a href="#top">Back to top</a>)</p>
+
+---
+
+## OPSEC Awareness
+
+Log analysis is not magic. A sophisticated attacker with root access can tamper with all three log sources while preserving file metadata.
+
+**[hidemyass](https://github.com/evilpan/hidemyass)** demonstrates this: it modifies individual records (not the whole file), preserves permissions, owner/group, and ctime/atime. Standard forensic tools see nothing.
+
+```bash
+# Wipe a specific IP from utmp, wtmp, and btmp
+./hidemyass -uwb -a 185.220.101.34 -c
+
+# Fake a lastlog timestamp
+./hidemyass -l -n root -t 2026:03:15:09:30:00 -c
+```
+
+| Log source | Tamper-proof? | Detection |
+|---|---|---|
+| `/var/log/lastlog` | No | Compare against wtmp/auth.log; file integrity monitoring |
+| `/var/log/wtmp` | No | Compare against auth.log; check session sequence gaps |
+| `/var/log/auth.log` | No | Forward to remote syslog; check for missing time ranges |
+
+**The only reliable defense is remote log forwarding.** If logs are shipped off-box in real time (rsyslog, syslog-ng, journald-remote), the attacker cannot retroactively delete them. File integrity monitoring (AIDE, Tripwire), immutable audit logs, and cross-source correlation (`--correlate`) add additional layers but are not sufficient alone.
+
+The `--correlate` mode helps detect tampering: if auth.log shows a root login from an IP that lastlog does not, someone cleaned lastlog.
+
+For full OPSEC analysis and defense-in-depth recommendations, see [`samples/README.md`](samples/README.md#opsec-awareness-why-log-analysis-has-limits).
 
 <p align="right">(<a href="#top">Back to top</a>)</p>
 
