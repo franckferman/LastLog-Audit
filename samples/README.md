@@ -315,20 +315,20 @@ pts/4    10.10.14.7    2026-03-28 10:45:00    (UID 1003)
 
 A sophisticated attacker with root access will not leave clean traces in lastlog, wtmp, or auth.log. Tools exist specifically to tamper with these files while preserving file metadata (permissions, timestamps, ownership).
 
-**[hidemyass](https://github.com/evilpan/hidemyass)** is a post-exploitation tool that demonstrates this:
+The original **[hidemyass](https://github.com/evilpan/hidemyass)** (2016, C) demonstrated this concept. **[hidemylogs](https://github.com/franckferman/hidemylogs)** is a modern Rust rewrite with expanded capabilities:
 
 ```bash
-# Wipe a specific IP from utmp, wtmp, and btmp
-./hidemyass -uwb -a 185.220.101.34 -c
+# Preview what would be wiped (dry run)
+hidemylogs wipe -a 185.220.101.34 --dry-run
 
-# Modify a lastlog record to fake a different login time
-./hidemyass -l -n root -t 2026:03:15:09:30:00 -c
+# Wipe records matching IP AND a specific time window
+hidemylogs wipe -a 185.220.101.34 -t 03:00-04:00 --and
 
-# Print all records to verify tampering
-./hidemyass -uwbl -p
+# Forge a fake lastlog entry
+hidemylogs forge --uid 0 -t "2026-03-15 09:30:00" --host 10.0.1.50
 ```
 
-hidemyass modifies individual records (not the whole file), preserves file permissions, owner/group, and ctime/atime. The result: `last`, `lastlog`, `who`, and `w` all show clean output. Standard forensic tools see nothing.
+These tools modify individual records (not the whole file), preserve file permissions, owner/group, and atime/mtime. The result: `last`, `lastlog`, `who`, and `w` all show clean output. Standard forensic tools see nothing.
 
 ### What this means for defenders
 
@@ -336,8 +336,8 @@ LastLog-Audit and similar tools are valuable for detection, but they are **not t
 
 | Log source | Can be tampered by root? | Detection of tampering |
 |---|---|---|
-| `/var/log/lastlog` | Yes (hidemyass, direct binary edit) | Compare against wtmp/auth.log; check file integrity (AIDE, Tripwire) |
-| `/var/log/wtmp` | Yes (hidemyass, utmpdump + edit + utmpdump -r) | Compare against auth.log; check for gaps in session sequence |
+| `/var/log/lastlog` | Yes ([hidemylogs](https://github.com/franckferman/hidemylogs) wipe/forge) | Compare against wtmp/auth.log; check file integrity (AIDE, Tripwire) |
+| `/var/log/wtmp` | Yes ([hidemylogs](https://github.com/franckferman/hidemylogs) wipe) | Compare against auth.log; check for gaps in session sequence |
 | `/var/log/auth.log` | Yes (sed, truncate, or log poisoning) | Forward logs to remote syslog (the attacker can't reach); check for missing time ranges |
 | All local logs | Yes if attacker has root | **Remote logging is the only reliable defense** |
 

@@ -346,14 +346,17 @@ def generate_my_scenario():
 
 Log analysis is not magic. A sophisticated attacker with root access can tamper with all three log sources while preserving file metadata.
 
-**[hidemyass](https://github.com/evilpan/hidemyass)** demonstrates this: it modifies individual records (not the whole file), preserves permissions, owner/group, and ctime/atime. Standard forensic tools see nothing.
+The original **[hidemyass](https://github.com/evilpan/hidemyass)** (2016, C) demonstrated this. **[hidemylogs](https://github.com/franckferman/hidemylogs)** is a modern Rust rewrite with additional capabilities: time-range filtering, AND/OR filter logic, dry-run mode, lastlog forging, and atime/mtime preservation.
 
 ```bash
-# Wipe a specific IP from utmp, wtmp, and btmp
-./hidemyass -uwb -a 185.220.101.34 -c
+# Wipe a specific IP from wtmp (dry run first)
+hidemylogs wipe -a 185.220.101.34 --dry-run
 
-# Fake a lastlog timestamp
-./hidemyass -l -n root -t 2026:03:15:09:30:00 -c
+# Wipe records matching IP AND time range 03:00-04:00
+hidemylogs wipe -a 185.220.101.34 -t 03:00-04:00 --and
+
+# Forge a fake lastlog entry
+hidemylogs forge --uid 0 -t "2026-03-15 09:30:00" --host 10.0.1.50
 ```
 
 | Log source | Tamper-proof? | Detection |
