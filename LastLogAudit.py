@@ -664,13 +664,13 @@ def export_auth_log(
 
 
 def correlate_sources(
-    lastlog_file: str,
-    wtmp_file: str,
-    auth_log_file: str,
+    lastlog_file: Optional[str] = None,
+    wtmp_file: Optional[str] = None,
+    auth_log_file: Optional[str] = None,
 ) -> None:
     """
-    Cross-reference lastlog, wtmp, and auth.log to produce a unified
-    security assessment.
+    Cross-reference available log sources to produce a unified
+    security assessment. Works with any combination of 2+ sources.
 
     Correlation logic:
     - Match lastlog UIDs against wtmp sessions to show full history
@@ -679,18 +679,21 @@ def correlate_sources(
     - Flag accounts that appear in lastlog but not wtmp (possible tampering)
     - Flag external IPs seen across multiple sources
     """
-    lastlog_records = parse_lastlog(lastlog_file, include_username=False)
-    wtmp_records = parse_wtmp(wtmp_file)
-    auth_records = parse_auth_log(auth_log_file)
+    lastlog_records = parse_lastlog(lastlog_file, include_username=False) if lastlog_file else []
+    wtmp_records = parse_wtmp(wtmp_file) if wtmp_file else []
+    auth_records = parse_auth_log(auth_log_file) if auth_log_file else []
 
     print("=" * 70)
     print("  CORRELATION REPORT")
     print("=" * 70)
 
     print("\n  Sources:")
-    print(f"    lastlog  : {lastlog_file} ({len(lastlog_records)} records)")
-    print(f"    wtmp     : {wtmp_file} ({len(wtmp_records)} records)")
-    print(f"    auth.log : {auth_log_file} ({len(auth_records)} events)")
+    if lastlog_file:
+        print(f"    lastlog  : {lastlog_file} ({len(lastlog_records)} records)")
+    if wtmp_file:
+        print(f"    wtmp     : {wtmp_file} ({len(wtmp_records)} records)")
+    if auth_log_file:
+        print(f"    auth.log : {auth_log_file} ({len(auth_records)} events)")
 
     # Collect all external IPs across sources
     lastlog_ips = {r.hostname for r in lastlog_records if r.hostname and not r.hostname.startswith(("10.", "192.168.", "172."))}
@@ -883,11 +886,15 @@ def main() -> None:
     args = parse_args()
 
     try:
-        if args.correlate:
-            if not args.wtmp or not args.auth_log:
-                print("[ERROR] --correlate requires --file, --wtmp, and --auth-log.")
-                sys.exit(1)
-            correlate_sources(args.file, args.wtmp, args.auth_log)
+        has_multiple = (args.wtmp and args.auth_log) or (args.wtmp and args.file) or (args.auth_log and args.file)
+
+        if args.correlate or has_multiple:
+            explicit_lastlog = args.file != "/var/log/lastlog" or (not args.wtmp and not args.auth_log)
+            correlate_sources(
+                lastlog_file=args.file if explicit_lastlog else None,
+                wtmp_file=args.wtmp if args.wtmp else None,
+                auth_log_file=args.auth_log if args.auth_log else None,
+            )
             return
 
         if args.auth_log:
