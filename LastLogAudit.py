@@ -498,6 +498,51 @@ _RE_SUDO = re.compile(
 )
 
 
+def _parse_syslog_security_lines(lines) -> List[Dict[str, str]]:
+    """Extract SSH/sudo security events from syslog-format lines.
+
+    Shared by parse_auth_log (file) and parse_journal (journald output) —
+    journalctl -o short produces the exact same line format as auth.log.
+    """
+    records: List[Dict[str, str]] = []
+    for line in lines:
+        line = line.rstrip("\n")
+
+        match = _RE_SSHD_ACCEPTED.match(line)
+        if match:
+            records.append({
+                "timestamp": match.group(1),
+                "event": "LOGIN_SUCCESS",
+                "method": match.group(2),
+                "username": match.group(3),
+                "ip": match.group(4),
+            })
+            continue
+
+        match = _RE_SSHD_FAILED.match(line)
+        if match:
+            records.append({
+                "timestamp": match.group(1),
+                "event": "LOGIN_FAILED",
+                "method": match.group(2),
+                "username": match.group(3),
+                "ip": match.group(4),
+            })
+            continue
+
+        match = _RE_SUDO.match(line)
+        if match:
+            records.append({
+                "timestamp": match.group(1),
+                "event": "SUDO",
+                "username": match.group(2),
+                "command": match.group(3).strip(),
+            })
+            continue
+
+    return records
+
+
 def parse_auth_log(filepath: str) -> List[Dict[str, str]]:
     """
     Parse an auth.log (syslog text format) file and extract security events.
@@ -538,45 +583,68 @@ def parse_auth_log(filepath: str) -> List[Dict[str, str]]:
             "        Try running with elevated privileges (sudo)."
         )
 
-    records: List[Dict[str, str]] = []
-
     with open(filepath, "r", encoding="utf-8", errors="replace") as fh:
-        for line in fh:
-            line = line.rstrip("\n")
+        return _parse_syslog_security_lines(fh)
 
-            match = _RE_SSHD_ACCEPTED.match(line)
-            if match:
-                records.append({
-                    "timestamp": match.group(1),
-                    "event": "LOGIN_SUCCESS",
-                    "method": match.group(2),
-                    "username": match.group(3),
-                    "ip": match.group(4),
-                })
-                continue
 
-            match = _RE_SSHD_FAILED.match(line)
-            if match:
-                records.append({
-                    "timestamp": match.group(1),
-                    "event": "LOGIN_FAILED",
-                    "method": match.group(2),
-                    "username": match.group(3),
-                    "ip": match.group(4),
-                })
-                continue
+def journald_available() -> bool:
+    """
+    True when systemd-journald is usable on this host.
 
-            match = _RE_SUDO.match(line)
-            if match:
-                records.append({
-                    "timestamp": match.group(1),
-                    "event": "SUDO",
-                    "username": match.group(2),
-                    "command": match.group(3).strip(),
-                })
-                continue
+    Requires both the journalctl binary and a running systemd instance.
+    On non-systemd inits (OpenRC, runit, busybox-init, sysvinit) this
+    returns False — which is NORMAL, not an error: there is simply no
+    journal to read.
+    """
+    import shutil
+    if shutil.which("journalctl") is None:
+        return False
+    return os.path.isdir("/run/systemd/system")
 
-    return records
+
+def parse_journal() -> List[Dict[str, str]]:
+    """
+    Parse SSH and sudo events from the systemd journal.
+
+    journald keeps its OWN binary copy of sshd/sudo activity: wiping
+    /var/log/auth.log does NOT remove it. This function reads that copy
+    via `journalctl _COMM=sshd _COMM=sudo -o short` — the same syslog
+    line format as auth.log, so the shared parser applies unchanged.
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        Same record shape as parse_auth_log.
+
+    Raises
+    ------
+    RuntimeError
+        When journald is unavailable (non-systemd init) or journalctl fails.
+    """
+    if not journald_available():
+        raise RuntimeError(
+            "[INFO] journald is not available on this system "
+            "(non-systemd init — this is normal on OpenRC/runit/busybox).\n"
+            "       There is no journal copy to audit; auth.log/wtmp suffice here."
+        )
+
+    import subprocess
+    try:
+        proc = subprocess.run(
+            ["journalctl", "_COMM=sshd", "_COMM=sudo", "--no-pager", "-o", "short"],
+            capture_output=True, text=True, timeout=60,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"[ERROR] journalctl timed out: {exc}") from exc
+
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"[ERROR] journalctl failed (exit {proc.returncode}): "
+            f"{proc.stderr.strip() or 'unknown error'}\n"
+            "        Try running with elevated privileges (sudo)."
+        )
+
+    return _parse_syslog_security_lines(proc.stdout.splitlines())
 
 
 def _build_auth_row(record: Dict[str, str]) -> List[str]:
@@ -667,6 +735,7 @@ def correlate_sources(
     lastlog_file: Optional[str] = None,
     wtmp_file: Optional[str] = None,
     auth_log_file: Optional[str] = None,
+    use_journal: bool = False,
 ) -> None:
     """
     Cross-reference available log sources to produce a unified
@@ -678,10 +747,19 @@ def correlate_sources(
       (brute force confirmation)
     - Flag accounts that appear in lastlog but not wtmp (possible tampering)
     - Flag external IPs seen across multiple sources
+    - When use_journal is set, the systemd journal is merged into the
+      auth events (journald keeps its own copy even if auth.log was wiped)
     """
     lastlog_records = parse_lastlog(lastlog_file, include_username=False) if lastlog_file else []
     wtmp_records = parse_wtmp(wtmp_file) if wtmp_file else []
     auth_records = parse_auth_log(auth_log_file) if auth_log_file else []
+    journal_records: List[Dict[str, str]] = []
+    if use_journal:
+        try:
+            journal_records = parse_journal()
+        except RuntimeError as exc:
+            print(f"  {exc}")
+    auth_records = auth_records + journal_records
 
     print("=" * 70)
     print("  CORRELATION REPORT")
@@ -693,7 +771,9 @@ def correlate_sources(
     if wtmp_file:
         print(f"    wtmp     : {wtmp_file} ({len(wtmp_records)} records)")
     if auth_log_file:
-        print(f"    auth.log : {auth_log_file} ({len(auth_records)} events)")
+        print(f"    auth.log : {auth_log_file} ({len(parse_auth_log(auth_log_file))} events)")
+    if use_journal and journal_records:
+        print(f"    journald : systemd journal ({len(journal_records)} events)")
 
     # Collect all external IPs across sources
     lastlog_ips = {r.hostname for r in lastlog_records if r.hostname and not r.hostname.startswith(("10.", "192.168.", "172."))}
@@ -870,6 +950,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--journal",
+        action="store_true",
+        help=(
+            "Parse SSH/sudo events from the systemd journal. "
+            "journald keeps its own copy of sshd activity: a wiped auth.log "
+            "does NOT erase it. Degrades gracefully on non-systemd inits "
+            "(OpenRC/runit: no journal to read, which is normal)."
+        ),
+    )
+    parser.add_argument(
         "--correlate",
         action="store_true",
         help=(
@@ -886,14 +976,19 @@ def main() -> None:
     args = parse_args()
 
     try:
-        has_multiple = (args.wtmp and args.auth_log) or (args.wtmp and args.file) or (args.auth_log and args.file)
+        has_multiple = ((args.wtmp and args.auth_log) or (args.wtmp and args.file)
+                        or (args.auth_log and args.file)
+                        or (args.journal and (args.wtmp or args.auth_log
+                                              or args.file != "/var/log/lastlog")))
 
         if args.correlate or has_multiple:
-            explicit_lastlog = args.file != "/var/log/lastlog" or (not args.wtmp and not args.auth_log)
+            explicit_lastlog = args.file != "/var/log/lastlog" or (
+                not args.wtmp and not args.auth_log and not args.journal)
             correlate_sources(
                 lastlog_file=args.file if explicit_lastlog else None,
                 wtmp_file=args.wtmp if args.wtmp else None,
                 auth_log_file=args.auth_log if args.auth_log else None,
+                use_journal=args.journal,
             )
             return
 
@@ -922,6 +1017,26 @@ def main() -> None:
             else:
                 print()
                 display_auth_log(auth_records, args.display)
+            return
+
+        if args.journal:
+            journal_records = parse_journal()
+
+            if not journal_records:
+                print("[INFO] No SSH or sudo events found in the systemd journal.")
+                return
+
+            print(f"[+] {len(journal_records)} event(s) parsed from the systemd journal")
+
+            if args.export:
+                export_auth_log(journal_records, args.export, args.export_format)
+                print(
+                    f"[+] Records exported to '{args.export}' "
+                    f"(format: {args.export_format})"
+                )
+            else:
+                print()
+                display_auth_log(journal_records, args.display)
             return
 
         if args.wtmp:
@@ -959,7 +1074,7 @@ def main() -> None:
             print()
             display_records(records, args.display, args.include_username)
 
-    except (FileNotFoundError, PermissionError, OSError, struct.error) as exc:
+    except (FileNotFoundError, PermissionError, OSError, struct.error, RuntimeError) as exc:
         print(exc, file=sys.stderr)
         sys.exit(1)
     except KeyboardInterrupt:

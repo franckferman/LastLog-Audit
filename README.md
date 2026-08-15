@@ -148,7 +148,8 @@ curl -O https://raw.githubusercontent.com/franckferman/LastLog-Audit/stable/Last
 |---|---|---|
 | `--wtmp` | `FILE` | Parse a wtmp binary file for full login/logout history (struct utmp, 384 bytes/record). |
 | `--auth-log` | `FILE` | Parse auth.log for SSH successes/failures and sudo commands. |
-| `--correlate` | flag | Cross-reference lastlog + wtmp + auth.log. Requires `-f`, `--wtmp`, and `--auth-log`. |
+| `--journal` | flag | Parse SSH/sudo events from the **systemd journal** — journald keeps its own copy even when auth.log was wiped. Clean no-op on non-systemd inits (OpenRC, runit). Also merged into `--correlate`. |
+| `--correlate` | flag | Cross-reference lastlog + wtmp + auth.log (+ journald with `--journal`). Requires `-f`, `--wtmp`, and `--auth-log`. |
 
 **Output:**
 
