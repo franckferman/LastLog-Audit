@@ -309,7 +309,11 @@
         <span class="comment"># Parse auth.log (SSH successes/failures + sudo)</span><br>
         <span class="prompt">$</span> python3 LastLogAudit.py <span class="flag">--auth-log</span> /var/log/auth.log<br>
         <br>
-        <span class="comment"># Cross-reference all 3 sources</span><br>
+        <span class="comment"># Parse the systemd journal — journald keeps its own copy,</span><br>
+        <span class="comment"># even when auth.log was wiped (clean no-op on OpenRC/non-systemd)</span><br>
+        <span class="prompt">$</span> python3 LastLogAudit.py <span class="flag">--journal</span><br>
+        <br>
+        <span class="comment"># Cross-reference all 3 sources (+ journald with --journal)</span><br>
         <span class="prompt">$</span> python3 LastLogAudit.py <span class="flag">-f</span> /var/log/lastlog <span class="flag">--wtmp</span> /var/log/wtmp <span class="flag">--auth-log</span> /var/log/auth.log <span class="flag">--correlate</span>
       </code>
     </div>
@@ -326,7 +330,8 @@
         <tr><td><code>-f / --file</code></td><td>Path to lastlog binary (default: /var/log/lastlog)</td></tr>
         <tr><td><code>--wtmp</code></td><td>Parse wtmp binary for full login/logout history</td></tr>
         <tr><td><code>--auth-log</code></td><td>Parse auth.log for SSH events and sudo commands</td></tr>
-        <tr><td><code>--correlate</code></td><td>Cross-reference lastlog + wtmp + auth.log (requires all three)</td></tr>
+        <tr><td><code>--journal</code></td><td>Parse SSH/sudo events from the systemd journal (survives auth.log wipes; graceful no-op on non-systemd inits)</td></tr>
+        <tr><td><code>--correlate</code></td><td>Cross-reference lastlog + wtmp + auth.log (+ journald with <code>--journal</code>)</td></tr>
         <tr><td><code>-u / --include-username</code></td><td>Resolve UIDs to usernames (lastlog mode only)</td></tr>
         <tr><td><code>-d / --display</code></td><td>Output format: <code>table</code> or <code>line</code></td></tr>
         <tr><td><code>-e / --export</code></td><td>Export to file</td></tr>
